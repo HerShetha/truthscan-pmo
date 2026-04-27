@@ -104,7 +104,10 @@ if not api_key:
 genai.configure(api_key=api_key)
 model = get_gemini_model()
 
-SYSTEM_PROMPT = "You are an EU compliance officer. Ignore visual aesthetics like green colors or leaves. Search only for verifiable data like QR codes or ISO certifications. If missing, output HIGH RISK. If present, output LOW RISK."
+SYSTEM_PROMPT = """You are an EU compliance officer. Ignore visual aesthetics like green colors or leaves. Search only for verifiable data like QR codes or ISO certifications. 
+You must output your response in exactly the following format:
+STATUS: [HIGH RISK or LOW RISK]
+REASON: [A clear, concise 1-2 sentence explanation of exactly why this picture was classified as high or low risk, specifying which marks were found or missing.]"""
 
 # Sidebar Operations
 st.sidebar.title("📊 PMO Audit History")
@@ -149,12 +152,21 @@ if uploaded_file is not None:
                 
                 # Display output depending on Risk Status
                 risk_status = "UNKNOWN"
+                reasoning = "Detailed explanation missing from AI output. See raw log for details."
+                
+                # Safely extract reasoning
+                if "REASON:" in raw_text.upper():
+                    reason_index = raw_text.upper().find("REASON:") + len("REASON:")
+                    reasoning = raw_text[reason_index:].strip()
+
                 if "HIGH RISK" in raw_text.upper():
                     risk_status = "HIGH RISK"
                     st.error(f"🚨 **{risk_status}**: Potential compliance violation detected.")
+                    st.warning(f"**Explanation:**\n{reasoning}")
                 elif "LOW RISK" in raw_text.upper():
                     risk_status = "LOW RISK"
                     st.success(f"✅ **{risk_status}**: Verifiable compliance data detected.")
+                    st.info(f"**Explanation:**\n{reasoning}")
                 else:
                     st.warning("⚠️ Could not definitively determine RISK STATUS from model output.")
                 
